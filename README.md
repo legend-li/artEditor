@@ -140,3 +140,64 @@ $('#content').artEditor({
 访问:   
 127.0.0.1:9091    
    
+   
+   
+# 最后
+
+## html5图片压缩
+
+前端在获取到用户上传的图片之后，有时图片过大需要压缩，html5图片压缩主要是通过canvas来处理。但是在ios中存在几个问题：
+
+- 首先是图片的大小，如果图片的大小超过两百万像素，图片是无法绘制到canvas上的，调用drawImage的时候不会报错，但是你用toDataURL获取图片数据的时候获取到的是空的图片数据。
+
+- 再者就是canvas的大小有限制，如果canvas的大小大于大概五百万像素（即宽高乘积）的时候，不仅图片画不出来，其他什么东西也都是画不出来的。
+
+## 解决办法
+
+- 问题1解决办法是将图片分割成多块绘制到canvas上
+- 问题2对图片的宽高进行适当压缩，保证处于canvas的最大大小限制以内（大概500万像素以内），更早期的手机甚至限制canvas最大大小为300万像素左右，这个早起手机就不用理会了，毕竟用的人不多。
+
+## 代码
+
+``` js
+function compressHandler(img) {   
+    var canvas = document.createElement("canvas");  
+    var ctx = canvas.getContext('2d');  
+    var tCanvas = document.createElement("canvas");  
+    var tctx = tCanvas.getContext("2d");  
+    var initSize = img.src.length;   
+    var width = img.width;  
+    var height = img.height;  
+    var ratio;   
+    if ((ratio = width * height / 4000000) > 1) {  
+        ratio = Math.sqrt(ratio);   
+        width /= ratio;  
+        height /= ratio;  
+    } else {  
+        ratio = 1;  
+    }  
+    canvas.width = width;  
+    canvas.height = height;  
+    ctx.fillStyle = "#fff";  
+    ctx.fillRect(0, 0, canvas.width, canvas.height);  
+    var count;  
+    if ((count = width * height / 1000000) > 1) {  
+        count = ~~(Math.sqrt(count) + 1);  
+        var nw = ~~(width / count);  
+        var nh = ~~(height / count);  
+        tCanvas.width = nw;  
+        tCanvas.height = nh;  
+        for (var i = 0; i < count; i++) {  
+            for (var j = 0; j < count; j++) {  
+                tctx.drawImage(img, i * nw * ratio, j * nh * ratio, nw * ratio, nh * ratio, 0, 0, nw, nh);  
+                ctx.drawImage(tCanvas, i * nw, j * nh, nw, nh);  
+            }  
+        }  
+    } else {  
+        ctx.drawImage(img, 0, 0, width, height);  
+    }  
+    var ndata = canvas.toDataURL('image/jpeg', 0.1);  
+    tCanvas.width = tCanvas.height = canvas.width = canvas.height = 0;  
+    return ndata;   
+}
+```
